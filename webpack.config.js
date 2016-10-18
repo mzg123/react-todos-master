@@ -3,6 +3,7 @@
  */
 'use strict';
 var path = require('path');
+var webpack = require('webpack');
 var ExtractTextPlugin = require('extract-text-webpack-plugin');
 module.exports = {
 
@@ -37,6 +38,32 @@ module.exports = {
         ]
     },
     plugins: [
-        new ExtractTextPlugin("main.css")
+        new ExtractTextPlugin("main.css"),
+        new webpack.optimize.CommonsChunkPlugin("init.js")
     ]
+
+    //plugins:[
+    //    new HtmlWebpackPlugin({
+    //        filename: __dirname+'/build/html/login-build.html',
+    //        template:__dirname+'/src/tpl/login.html',
+    //        inject:'body',
+    //        hash:true
+    //    }),
+    //
+    //    new HtmlWebpackPlugin({
+    //        filename: __dirname+'/build/html/index-build.html',
+    //        template:__dirname+'/src/tpl/index.html',
+    //        inject:'body',
+    //        hash:true
+    //    }),
+    //
+    //    // 拆分插件
+    //    new webpack.optimize.CommonsChunkPlugin({
+    //        name:'user', // 上面入口定义的节点组
+    //        filename:'build-user.js' //最后生成的文件名
+    //    }),
+    //
+    //    // css抽取
+    //    new extractTextPlugin("[name].css"),
+    //]
 };
