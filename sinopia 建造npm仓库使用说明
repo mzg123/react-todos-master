@@ -1,0 +1,189 @@
+部署
+      安装
+
+      首先，你要自己配置nodejs及npm的环境，然后运行
+
+      npm install -g sinopia
+      启动
+
+      $ sinopia
+       warn  --- config file  - .....\AppData\Roaming\sinopia\config.yaml
+       warn  --- http address - http://localhost:4873/
+      然后打开：http://localhost:4873/
+      如果能正常显示，说明安装成功。
+
+      使用pm2启动
+
+      当然，你也可以使用pm2或其他的守护进程进行管理，具体步骤如下：
+
+      安装pm2:npm install -g pm2
+
+      启动：pm2 start `which sinopia`
+
+      更多高级的pm2使用方法可以查看pm2电子书，相当详细，强烈推荐。
+
+      服务端配置
+      Sinopia的特点是，你在哪个目录运行，它的就会在对应的目录下创建自己的文件。目录下默认有两个文件：config.yaml和storage ，htpasswd 是添加用户之后自动创建的。
+
+      root@debian:/usr/local/apps/sinopia# ls
+      config.yaml  htpasswd  storage
+      其中config.yaml是用来配置访问权限，代理，文件存储路径等所有配置信息的，htpasswd用来保存用户的账号密码等息息，storage是用来存放npm包的。
+
+      config.yaml配置文件
+
+      #
+      # This is the default config file. It allows all users to do anything,
+      # so don't use it on production systems.
+      #
+      # Look here for more config file examples:
+      # https://github.com/rlidwka/sinopia/tree/master/conf
+      #
+
+      # path to a directory with all packages
+      storage: ./storage  //npm包存放的路径
+
+      auth:
+        htpasswd:
+          file: ./htpasswd   //保存用户的账号密码等信息
+          # Maximum amount of users allowed to register, defaults to "+inf".
+          # You can set this to -1 to disable registration.
+          max_users: -1  //默认为1000，改为-1，禁止注册
+
+      # a list of other known repositories we can talk to
+      uplinks:
+        npmjs:
+          url: http://registry.npm.taobao.org/  //默认为npm的官网，由于国情，修改 url 让sinopia使用 淘宝的npm镜像地址
+
+      packages:  //配置权限管理
+        '@*/*':
+          # scoped packages
+          access: $all
+          publish: $authenticated
+
+        '*':
+          # allow all users (including non-authenticated users) to read and
+          # publish all packages
+          #
+          # you can specify usernames/groupnames (depending on your auth plugin)
+          # and three keywords: "$all", "$anonymous", "$authenticated"
+          access: $all
+
+          # allow all known users to publish packages
+          # (anyone can register by default, remember?)
+          publish: $authenticated
+
+          # if package is not available locally, proxy requests to 'npmjs' registry
+          proxy: npmjs
+
+      # log settings
+      logs:
+        - {type: stdout, format: pretty, level: http}
+        #- {type: file, path: sinopia.log, level: info}
+
+      # you can specify listen address (or simply a port)
+      listen: 0.0.0.0:4873  ////默认没有，只能在本机访问，添加后可以通过外网访问。
+      部分配置字段意义
+
+      storage: 仓库保存的路径
+
+      web: 是否支持WEB接口
+
+      auth: 验证相关
+
+      uplinks: 配置上游的npm服务器，主要是用于请求的仓库不存在时去上游服务器拉取
+
+      packages: 配置模块/包的发布(publish)、下载(access)的权限等
+
+      listen: 配置监听端口与主机名
+
+      auth配置
+
+      max_users: -1表示我们将最大用户数设置为－1，表示禁用 npm adduser 命令来创建用户，不过我们仍然可以通过当前目录下的 htpasswd 文件来初始化用户。
+      示例：
+
+
+      yorkie:{SHA}?????????????????=:autocreated 2016-02-05T15:33:46.238Z
+
+      weflex:{SHA}????????????????=:autocreated 2016-02-05T15:39:19.960Z
+
+      james:{SHA}????????????????=:autocreated 2016-02-05T17:59:05.041Z
+      上面的加密算法也很简单，就是简单的SHA1哈稀之后再转换成 Base64 输出就好，后面跟着的只是表示时间。
+
+      packages配置
+
+      配置大致分为两个部分，一个是以 @weflex/* 为开头的，另一个则是通配符 *。
+
+      这个当然就是对 package.json 中的 name 字段进行匹配，比如 @weflex/app 将匹配第一个配置，而 express 则匹配第二个。
+
+      这里这么配置的意义在于：一般团队或者公司的私有项目，会采用不同的权限控制，于是这里借用了 NPM 的 scoped name 即 @company 的形式，例如 @weflex/app 即表示 WeFlex 下属的 app 项目了。
+
+      接下来，每一个命名过滤器(filter)下都有三项基本设置：
+
+      access: 表示哪一类用户可以对匹配的项目进行安装(install)
+      publish: 表示哪一类用户可以对匹配的项目进行发布(publish)
+      proxy: 如其名，这里的值是对应于 uplinks 的
+      对于1和2的值，我们通常有以下一些可选的配置：
+
+      $all 表示所有人都可以执行对应的操作
+      $authenticated 表示只有通过验证的人可以执行对应操作
+      $anonymous 表示只有匿名者可以进行对应操作（通常无用）
+      或者也可以指定对应于之前我们配置的用户表 htpasswd 中的一个或多个用户，这样就明确地指定哪些用户可以执行匹配的操作配置完成后，再运行：
+
+      $ sinopia -c config.yml
+      客户端使用
+      强烈推荐使用nrm来管理自己的代理。
+      安装nrm:
+
+      全局安装nrm可以快速修改,切换,增加npm镜像地址。
+
+      $ npm install -g nrm # 安装nrm
+      $ nrm add XXXXX http://XXXXXX:4873 # 添加本地的npm镜像地址
+      $ nrm use XXXX # 使用本址的镜像地址
+      nrm的其他命令：
+
+      $ nrm --help  # 查看nrm命令帮助
+      $ nrm list # 列出可用的 npm 镜像地址
+      $ nrm use taobao # 使用`淘宝npm`镜像地址
+      安装包
+
+      安装完成.之后你通过npm install 安装的包,sinopia都会帮你缓存到本地了.试一下吧。
+
+      mkdir test && cd test
+      npm install lodash # sinopia发现本地没有 lodash包,就会从 taobao镜像下载
+      rm -rf node-modules # 删除目录
+      npm insatll lodash # 第二次安装就会从缓存下载了,速度很快
+      创建用户与发布包
+
+      创建新用户
+
+      1.确保自己已经切换到配置的代理
+
+      ➜  ~ nrm ls
+
+        npm ---- https://registry.npmjs.org/
+        cnpm --- http://r.cnpmjs.org/
+        taobao - http://registry.npm.taobao.org/
+        nj ----- https://registry.nodejitsu.com/
+        rednpm - http://registry.mirror.cqupt.edu.cn
+        npmMirror  https://skimdb.npmjs.com/registry
+      * sinopia  http://192.168.1.200:4873/
+      2.运行npm adduser,填写信息，注册账号。如果已经有账号，直接运行npm login即可。
+
+      ➜  ~ npm adduser
+        Username: test
+        Password:
+      3.运行$ npm publish发布新包。
+
+      总结
+      到此为止吧，剩下的坑自己踩吧，多踩坑才能多成长。
+      保存好你的 htpasswd 文件，不要泄漏到任何公有仓库中去。
+      以上的情况并没有考虑在遇到一些黑客攻击的情况下，所以为了尽量保证代码的安全，可以在前端加一层 Nginx 然后配置 SSH 公钥来作为双层验证
+
+       npm install lodash # sinopia发现本地没有 lodash包,就会从 taobao镜像下载
+            rm -rf node-modules # 删除目录
+            npm insatll lodash # 第二次安装就会从缓存下载了,速度很快
+            .运行$ npm publish发布新包。
+
+            npm adduser --registry https://registry.npmjs.org/
+ https://registry.npmjs.org/
+            sinopia -l 100.100.100.100:8000
